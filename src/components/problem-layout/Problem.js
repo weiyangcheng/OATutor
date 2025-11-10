@@ -18,6 +18,7 @@ import { NavLink } from "react-router-dom";
 import HelpOutlineOutlinedIcon from "@material-ui/icons/HelpOutlineOutlined";
 import FeedbackOutlinedIcon from "@material-ui/icons/FeedbackOutlined";
 import withTranslation from "../../util/withTranslation.js"
+import avatar from "../../assets/avatar_default_state.svg";
 
 import {
     CANVAS_WARNING_STORAGE_KEY,
@@ -35,7 +36,7 @@ import { cleanArray } from "../../util/cleanObject";
 import Popup from '../Popup/Popup.js';
 import About from '../../pages/Posts/About.js';
 
-import {Accordion, AccordionSummary, AccordionDetails, typography} from "@material-ui/core";
+import {Accordion, AccordionSummary, AccordionDetails, Typography} from "@material-ui/core";
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 
 class Problem extends React.Component {
@@ -85,10 +86,14 @@ class Problem extends React.Component {
             feedback: "",
             feedbackSubmitted: false,
             showPopup: false, 
-            expandedAccordion: null
+            expandedAccordion: 0,
+            hintToggleTrigger: 0,
+            hintToggleIndex: null,
+            isHintPortalOpen: false,
         };
 
         this.togglePopup = this.togglePopup.bind(this);
+        this.hintPortalRef = React.createRef();
     }
 
     componentDidMount() {
@@ -434,11 +439,59 @@ class Problem extends React.Component {
     };
 
     accordionChange = (panel) => (event, isExpanded) => {
-        this.setState({
-            expandedAccordion: isExpanded
-                ? panel
-                : null,
+        this.setState(() => ({
+            expandedAccordion: isExpanded ? panel : null,
+            hintToggleIndex: null,
+            isHintPortalOpen: false,
+        }));
+    };
+
+    handleHintAvatarClick = (event) => {
+        if (
+            event &&
+            this.state.isHintPortalOpen &&
+            this.hintPortalRef?.current &&
+            this.hintPortalRef.current.contains(event.target)
+        ) {
+            return;
+        }
+
+        this.setState((prevState, props) => {
+            const steps = props.problem?.steps || [];
+
+            if (steps.length === 0) {
+                return null;
+            }
+
+            const hasExpanded = prevState.expandedAccordion !== null;
+            const targetIndex = hasExpanded ? prevState.expandedAccordion : 0;
+
+            return {
+                hintToggleTrigger: prevState.hintToggleTrigger + 1,
+                hintToggleIndex: targetIndex,
+                expandedAccordion: hasExpanded
+                    ? prevState.expandedAccordion
+                    : targetIndex,
+                isHintPortalOpen: false,
+            };
         });
+    };
+
+    handleHintAvatarKeyDown = (event) => {
+        if (
+            (event.key === "Enter" || event.key === " ") &&
+            event.target === event.currentTarget
+        ) {
+            event.preventDefault();
+            this.handleHintAvatarClick(event);
+        }
+    };
+
+    handleHintToggleFromStep = (index, isOpen) => {
+        this.setState((prevState) => ({
+            isHintPortalOpen: isOpen,
+            hintToggleIndex: isOpen ? index : null,
+        }));
     };
 
     render() {
@@ -446,26 +499,76 @@ class Problem extends React.Component {
         const { classes, problem, seed } = this.props;
         const [oerLink, oerName, licenseLink, licenseName] =
             this.getOerLicense();
-        const { showPopup } = this.state;
+        const { showPopup, isHintPortalOpen } = this.state;
         if (problem == null) {
             return <div></div>;
         }
 
+        const drawerOpen = this.props.drawerOpen;
+        const layoutGap = drawerOpen ? 5 : 6;
+        const hintStickTop = 200;
+        const rightRailStyle = {
+            position: "sticky",
+            top: hintStickTop,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "stretch",
+            width: "95%",
+            maxWidth: "100%",
+            maxHeight: "70vh",
+            transition: "all 0.4s ease",
+        };
+
+        const bubbleContainerStyle = {
+            position: "relative",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: isHintPortalOpen ? "stretch" : "flex-end",
+            justifyContent: isHintPortalOpen ? "flex-end" : "flex-start",
+            width: isHintPortalOpen ? "100%" : "auto",
+            flexGrow: 1,
+        };
+
+        const speechBubbleStyle = {
+            background: "#FFF3CC",
+            color: "#222",
+            padding: "12px 16px",
+            borderRadius: 8,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            position: "relative",
+            width: isHintPortalOpen ? "100%" : "auto",
+            maxWidth: isHintPortalOpen ? "100%" : 240,
+            // height: isHintPortalOpen ? "70vh" : "auto",
+            maxHeight: "60vh",
+            alignSelf: isHintPortalOpen ? "stretch" : "flex-end",
+            textAlign: "left",
+            cursor: "pointer",
+            transition: "all 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)",
+            marginTop: isHintPortalOpen ? "auto" : 0,
+            zIndex: 2,
+        };
+
+        const hintPortalStyle = {
+            display: isHintPortalOpen ? "block" : "none",
+            width: "100%",
+            height: isHintPortalOpen ? "100vh" : "auto",
+            marginTop: isHintPortalOpen ? 8 : 0,
+            maxHeight: "60vh",
+            overflowY: "auto",
+        };
+
         return (
             <>
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        width: "100%",
-                    }}
+                <Grid
+                    container
+                    spacing={layoutGap}
+                    alignItems="flex-start"
+                    style={{ width: "100%", margin: 0 }}
                 >
-                    <div
-                        style={{
-                            width: "85%"
-                        // width: this.props.drawerOpen ? "95%" : "75%",
-                        // transition: "width 0.3s ease",
-                        }}
+                    <Grid
+                        item
+                        xs={12}
+                        md={drawerOpen ? 8 : 7}
                     >
                         <div className={classes.prompt} role={"banner"}>
                             <Card className={classes.titleCard}>
@@ -517,39 +620,84 @@ class Problem extends React.Component {
                         </div>
 
                         <div role={"main"}>
-                            {problem.steps.map((step, idx) => (
-                                <Element
-                                    name={idx.toString()}
-                                    key={`${problem.id}-${step.id}`}
-                                >
-                                    <ProblemCardWrapper
-                                        isAccordion={true}
-                                        expanded={this.state.expandedAccordion===idx}
-                                        onChange={this.accordionChange(idx)}
-                                        problemID={problem.id}
-                                        step={step}
-                                        index={idx}
-                                        answerMade={this.answerMade}
-                                        seed={seed}
-                                        problemVars={problem.variabilization}
-                                        lesson={problem.lesson}
-                                        courseName={problem.courseName}
-                                        problemTitle={problem.title}
-                                        problemSubTitle={problem.body}
-                                        giveStuFeedback={this.giveStuFeedback}
-                                        giveStuHints={this.giveStuHints}
-                                        keepMCOrder={this.keepMCOrder}
-                                        keyboardType={this.keyboardType}
-                                        giveHintOnIncorrect={
-                                            this.giveHintOnIncorrect
-                                        }
-                                        unlockFirstHint={this.unlockFirstHint}
-                                        giveStuBottomHint={this.giveStuBottomHint}
-                                        giveDynamicHint={this.giveDynamicHint}
-                                        prompt_template={this.prompt_template}
-                                    />
-                                </Element>                          
-                            ))}
+                            {problem.steps.map((step, idx) => {
+                                const expanded =
+                                    this.state.expandedAccordion === idx;
+                                return (
+                                    <Element
+                                        name={idx.toString()}
+                                        key={`${problem.id}-${step.id}`}
+                                    >
+                                        <Accordion
+                                            style={{
+                                                marginBottom: 32,
+                                                // backgroundColor: "transparent",
+                                                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                                            }}
+                                            expanded={expanded}
+                                            onChange={this.accordionChange(idx)}
+                                            round
+                                        >
+                                            <AccordionSummary
+                                                expandIcon={<ExpandMoreIcon />}
+                                                aria-controls={`problem-step-${idx}-content`}
+                                                id={`problem-step-${idx}-header`}
+                                                {...stagingProp({
+                                                    "data-selenium-target": `problem-step-toggle-${idx}`,
+                                                })}
+                                            >
+                                                <Typography
+                                                    variant="subtitle1"
+                                                    style={{
+                                                        fontWeight: 800,
+                                                    }}
+                                                >
+                                                    {renderText(
+                                                        step.stepTitle,
+                                                        problem.id,
+                                                        chooseVariables(
+                                                            Object.assign(
+                                                                {},
+                                                                problem.variabilization,
+                                                                step.variabilization
+                                                            ),
+                                                            seed
+                                                        ),
+                                                        this.context
+                                                    )}
+                                                </Typography>
+                                            </AccordionSummary>
+
+                                                <ProblemCardWrapper
+                                                    problemID={problem.id}
+                                                    step={step}
+                                                    index={idx}
+                                                    answerMade={this.answerMade}
+                                                    seed={seed}
+                                                    problemVars={problem.variabilization}
+                                                    lesson={problem.lesson}
+                                                    courseName={problem.courseName}
+                                                    problemTitle={problem.title}
+                                                    problemSubTitle={problem.body}
+                                                    giveStuFeedback={this.giveStuFeedback}
+                                                    giveStuHints={this.giveStuHints}
+                                                    keepMCOrder={this.keepMCOrder}
+                                                    keyboardType={this.keyboardType}
+                                                    giveHintOnIncorrect={this.giveHintOnIncorrect}
+                                                    unlockFirstHint={this.unlockFirstHint}
+                                                    giveStuBottomHint={this.giveStuBottomHint}
+                                                    giveDynamicHint={this.giveDynamicHint}
+                                                    prompt_template={this.prompt_template}
+                                                    showCardHeader={false}
+                                                    hintToggleTrigger={this.state.hintToggleTrigger}
+                                                    hintToggleIndex={this.state.hintToggleIndex}
+                                                    hintPortalTarget={this.hintPortalRef}
+                                                    onHintToggle={this.handleHintToggleFromStep}
+                                                />
+                                        </Accordion>
+                                    </Element>
+                                );
+                            })}
                         </div>
                         <div width="100%">
                             {this.context.debug ? (
@@ -627,8 +775,99 @@ class Problem extends React.Component {
 
                             )}
                         </div>
+                    </Grid>
+
+                    <Grid
+                        item
+                        xs={12}
+                        md={drawerOpen ? 4 : 5}
+                        style={{
+                        position: "sticky",
+                        top: hintStickTop,
+                        alignSelf: "flex-start",
+                        zIndex: 2,
+                    }}
+                    >
+                        <div style={rightRailStyle}>
+                        <button
+                            style={{
+                                backgroundColor: "#4E7DAA", // similar blue tone
+                                color: "white",
+                                border: "none",
+                                borderRadius: "9999px", // fully rounded edges
+                                padding: "2px 14px",
+                                fontSize: "12px",
+                                fontWeight: 500,
+                                cursor: "pointer",
+                                alignSelf: "flex-end",
+                                marginBottom: "56px",
+                            }}
+                            >
+                            OpenAI o1
+                        </button>
+                        <div
+                            style={bubbleContainerStyle}
+                        >
+                        {/* Speech Bubble */}
+                        <div
+                        style={speechBubbleStyle}
+                        {...stagingProp({
+                            "data-selenium-target": "hint-avatar-toggle",
+                        })}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={this.state.isHintPortalOpen}
+                        aria-controls="hint-portal-content"
+                        onClick={this.handleHintAvatarClick}
+                        onKeyDown={this.handleHintAvatarKeyDown}
+                        aria-label="Toggle hints"
+                        >
+                        <p style={{ margin: 0, fontWeight: 600 }}>Stuck on the problem?</p>
+                        {!this.state.isHintPortalOpen && (
+                            <p style={{ margin: 0 }}>Give me a tap and I am happy to help!</p>
+                        )}
+                        <div
+                            ref={this.hintPortalRef}
+                            id="hint-portal-content"
+                            role="region"
+                            aria-live="polite"
+                            aria-label="Hints"
+                            aria-hidden={!this.state.isHintPortalOpen}
+                            style={hintPortalStyle}
+                        />
+
+                        {/* Tail at top right, pointing upward */}
+                        <div
+                            style={{
+                                position: "absolute",
+                                top: "-8px",
+                                right: "24px",
+                                width: 0,
+                                height: 0,
+                                borderLeft: "8px solid transparent",
+                                borderRight: "8px solid transparent",
+                                borderBottom: "8px solid #FFF3CC"
+                            }}
+                        />
+                        </div>
+
+                        {/* Avatar Icon */}
+                        <img
+                        src={avatar}
+                        alt="Whisper"
+                        style={{
+                            width: 64,
+                            height: 64,
+                            position: "absolute",
+                            top: "-55px",
+                            right: "-10px",
+                            zIndex: 0,
+                        }}
+                        />
+                        </div>
                     </div>
-                </div>
+                    </Grid>
+                </Grid>
 
                 <footer>
                     <div

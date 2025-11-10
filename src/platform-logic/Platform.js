@@ -434,7 +434,7 @@ class Platform extends React.Component {
     const { translate } = this.props;
     const { showPopup } = this.state;
     const { classes } = this.props;
-    const drawerWidth = 356;
+    const drawerWidth = 340;
 
     this.studentNameDisplay = this.context.studentName ? decodeURIComponent(this.context.studentName) : translate("platform.LoggedIn");
 
@@ -444,11 +444,11 @@ class Platform extends React.Component {
     const inLesson = Boolean(this.props.lessonID);
 
     // Shared, centered max-width container for BOTH progress area and problem area
-    const CONTAINER_MAX_WIDTH = 1032;
+    const CONTAINER_MAX_WIDTH = "100vw";
     const CONTAINER_STYLE = {
       maxWidth: CONTAINER_MAX_WIDTH,
       width: "100%",
-      margin: "0 auto",
+      margin: inLesson && this.state.drawerOpen ? "0 0 0 16px" : "0 0 0 32px",
       padding: "0 16px",
       boxSizing: "border-box",
     };
@@ -492,6 +492,7 @@ class Platform extends React.Component {
             flexDirection: "column",
           }}
         >
+          {/* Top bar: "OATutor" logo, user icon and name */}
           <AppBar position="fixed" style={{ backgroundColor: "#FFFFFF" }}>
             <Toolbar>
               <Grid container spacing={0} role={"navigation"} alignItems={"center"}>
@@ -518,7 +519,8 @@ class Platform extends React.Component {
           </AppBar>
 
           <div className={classes.toolbarOffset} />
-
+          
+          {/* Second top bar:  course name, about and report problem buttons */}
           <AppBar position="fixed" className={classes.secondBarOffset}>
             <Toolbar style={{ minHeight: "56px" }}>
               <Grid container spacing={0} role={"secondary-navigation"} alignItems={"center"}>
@@ -587,6 +589,7 @@ class Platform extends React.Component {
 
           <div style={{ height: 56 }} />
 
+          {/* Progress Bar */}
           <div
             style={{
               marginLeft: inLesson && this.state.drawerOpen ? drawerWidth : 0,
@@ -594,7 +597,7 @@ class Platform extends React.Component {
             }}
           >
             {this.state.status === "learning" ? (
-              <AppBar position="static" style={{ backgroundColor: "#F6F8FA", boxShadow: "none" }}>
+              <AppBar position="sticky" style={{ top: 120, backgroundColor: "#F6F6F6", boxShadow: "none", zIndex: 1 }}>
                 <Toolbar disableGutters style={{ minHeight: 80 }}>
                   <Grid container spacing={0} role="progress-bar" alignItems="center" style={{ width: "100%" }}>
                     {!this.state.drawerOpen && (
@@ -607,7 +610,7 @@ class Platform extends React.Component {
                         <img src={ToCButton} alt="Table of Contents" style={{ width: 24, height: 24 }} />
                       </IconButton>
                     )}
-
+                    
                     <Grid item xs={12}>
                       <div style={CONTAINER_STYLE}>
                         {/* One centered row, 3 columns: [label] [bar (min..max)] [info] */}

@@ -36,11 +36,7 @@ import { joinList } from "../../util/formListString";
 import withTranslation from "../../util/withTranslation.js"
 import CryptoJS from "crypto-js";
 
-import fileCheck from "../../assets/file-check-02.svg"
-import stars from "../../assets/stars-02.svg"
-import teacherGuide from "../../assets/teacher guidance-cropped.svg"
-
-import clsx from 'clsx';
+import ReactDOM from "react-dom";
 import {Accordion, AccordionSummary, AccordionDetails, typography} from "@material-ui/core";
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 
@@ -51,7 +47,7 @@ class ProblemCard extends React.Component {
 
     constructor(props, context) {
         super(props);
-        //console.log("problem lesson props:", props);
+        console.log("problem lesson props:", props);
 
         this.translate = props.translate
         this.step = props.step;
@@ -229,6 +225,23 @@ class ProblemCard extends React.Component {
             });
             this.updateBioInfo();
         }
+
+        if (
+            this.props.hintToggleTrigger !== prevProps.hintToggleTrigger &&
+            this.props.hintToggleIndex === this.index
+        ) {
+            this.toggleHints();
+        }
+
+        if (
+            prevProps.hintToggleIndex === this.index &&
+            this.props.hintToggleIndex !== this.index &&
+            this.state.activeHintType === "normal"
+        ) {
+            this.setState({
+                activeHintType: "none",
+            });
+        }
     }
 
     submit = () => {
@@ -318,27 +331,35 @@ class ProblemCard extends React.Component {
         }
     };
 
-    toggleHints = (event) => {
-        if (this.giveDynamicHint && !this.state.activeHintType !== "normal") {
+    toggleHints = () => {
+        const togglingOn = this.state.activeHintType !== "normal";
+
+        if (togglingOn && this.giveDynamicHint) {
             this.generateHintFromGPT();
-        } else if (!this.state.displayHints) {
-            this.setState(
-                () => ({
-                    enableHintGeneration: false,
-            }))
         }
-        this.setState(
-            (prevState) => ({
-                activeHintType: prevState.activeHintType === "normal" ? "none" : "normal"
-                }),
-            () => {
-                this.props.answerMade(
+
+        const stateUpdates = {
+            activeHintType: togglingOn ? "normal" : "none",
+        };
+
+        if (togglingOn && !this.giveDynamicHint && !this.state.displayHints) {
+            stateUpdates.enableHintGeneration = false;
+        }
+
+        this.setState(stateUpdates, () => {
+            if (this.props.onHintToggle) {
+                this.props.onHintToggle(
                     this.index,
-                    this.step.knowledgeComponents,
-                    false
+                    this.state.activeHintType === "normal"
                 );
             }
-        );
+
+            this.props.answerMade(
+                this.index,
+                this.step.knowledgeComponents,
+                false
+            );
+        });
     };
 
     unlockHint = (hintNum, hintType) => {
@@ -630,36 +651,112 @@ class ProblemCard extends React.Component {
         const isMobile = this.props.width === "xs"; 
 
         const problemAttempted = isCorrect != null;
+        const showCardHeader = this.props.showCardHeader !== false;
+
+        const shouldShowHints =
+            this.showHints &&
+            (this.state.activeHintType === "normal" ||
+                (debug && use_expanded_view));
+
+        let inlineHints = null;
+        let portalHints = null;
+
+        if (shouldShowHints) {
+            const hintsContent = (
+                <div className="Hints">
+                    <ErrorBoundary
+                        componentName={"HintSystem"}
+                        descriptor={"hint"}
+                    >
+                        <HintSystem
+                            key={`hints-${this.giveDynamicHint ? "dynamic" : "manual"}`}
+                            giveHintOnIncorrect={this.giveHintOnIncorrect}
+                            giveDynamicHint={this.giveDynamicHint}
+                            giveStuFeedback={this.giveStuFeedback}
+                            unlockFirstHint={this.unlockFirstHint}
+                            problemID={this.props.problemID}
+                            index={this.props.index}
+                            step={this.step}
+                            hints={this.state.hints}
+                            unlockHint={this.unlockHint}
+                            hintStatus={this.state.hintsFinished}
+                            submitHint={this.submitHint}
+                            seed={this.props.seed}
+                            stepVars={Object.assign(
+                                {},
+                                this.props.problemVars,
+                                this.step.variabilization
+                            )}
+                            answerMade={this.props.answerMade}
+                            lesson={this.props.lesson}
+                            courseName={this.props.courseName}
+                            isIncorrect={this.expandFirstIncorrect}
+                            generateHintFromGPT={this.generateHintFromGPT}
+                            isGeneratingHint={this.state.isGeneratingHint}
+                        />
+                    </ErrorBoundary>
+                    <Spacer />
+                </div>
+            );
+
+            if (
+                this.props.hintPortalTarget &&
+                this.props.hintPortalTarget.current &&
+                this.props.hintToggleIndex === this.index
+            ) {
+                portalHints = ReactDOM.createPortal(
+                    <div
+                        style={{
+                            backgroundColor: "#FFFFFF",
+                            color: "#000000",
+                            borderRadius: 8,
+                            padding: 12,
+                            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.12)",
+                            width: "100%",
+                            boxSizing: "border-box",
+                        }}
+                    >
+                        {hintsContent}
+                    </div>,
+                    this.props.hintPortalTarget.current
+                );
+            } else {
+                inlineHints = hintsContent;
+            }
+        }
 
         return (
             // <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
             <Card 
                 className={classes.card} 
+                style={{ boxShadow: 'none', border: 'none' }}
                 // style={{ width: this.props.drawerOpen ? '95%' : '75%' }}
             >
                 <CardContent 
                     style={{ 
                         padding: '20px',
-                        marginBottom: -20 
+                        marginBottom: -20
                     }}>
-                    <h2 className={classes.stepHeader}>
-                        {renderText(
-                            this.step.stepTitle,
-                            problemID,
-                            chooseVariables(
-                                Object.assign(
-                                    {},
-                                    problemVars,
-                                    this.step.variabilization
+                    {showCardHeader && (
+                        <h2 className={classes.stepHeader}>
+                            {renderText(
+                                this.step.stepTitle,
+                                problemID,
+                                chooseVariables(
+                                    Object.assign(
+                                        {},
+                                        problemVars,
+                                        this.step.variabilization
+                                    ),
+                                    seed
                                 ),
-                                seed
-                            ),
-                            this.context
-                        )}
-                        <hr />
-                    </h2>
+                                this.context
+                            )}
+                            <hr />
+                        </h2>
+                    )}
 
-                            <div className={classes.stepBody}>
+                            <div className={"classes.stepBody"}>
                                 {renderText(
                                     this.step.stepBody,
                                     problemID,
@@ -674,43 +771,7 @@ class ProblemCard extends React.Component {
                                     this.context
                                 )}
                             </div>
-                            {(this.state.activeHintType === "normal" || (debug && use_expanded_view)) &&
-                                this.showHints && (
-                                    <div className="Hints">
-                                        <ErrorBoundary
-                                            componentName={"HintSystem"}
-                                            descriptor={"hint"}
-                                        >
-                                            <HintSystem
-                                                key={`hints-${this.giveDynamicHint ? 'dynamic' : 'manual'}`}
-                                                giveHintOnIncorrect={this.giveHintOnIncorrect}
-                                                giveDynamicHint={this.giveDynamicHint}
-                                                giveStuFeedback={this.giveStuFeedback}
-                                                unlockFirstHint={this.unlockFirstHint}
-                                                problemID={this.props.problemID}
-                                                index={this.props.index}
-                                                step={this.step}
-                                                hints={this.state.hints}
-                                                unlockHint={this.unlockHint}
-                                                hintStatus={this.state.hintsFinished}
-                                                submitHint={this.submitHint}
-                                                seed={this.props.seed}
-                                                stepVars={Object.assign(
-                                                    {},
-                                                    this.props.problemVars,
-                                                    this.step.variabilization
-                                                )}
-                                                answerMade={this.props.answerMade}
-                                                lesson={this.props.lesson}
-                                                courseName={this.props.courseName}
-                                                isIncorrect={this.expandFirstIncorrect}
-                                                generateHintFromGPT={this.generateHintFromGPT}
-                                                isGeneratingHint={this.state.isGeneratingHint}
-                                            />
-                                        </ErrorBoundary>
-                                        <Spacer />
-                                    </div>
-                                )}
+                            {inlineHints}
 
                             <div className={classes.root}>
                                 <ProblemInput
@@ -790,7 +851,7 @@ class ProblemCard extends React.Component {
                                     marginTop: 40, 
                                     marginBottom: 20,
                                     marginLeft: 20,
-                                    marginRight: 20
+                                    marginRight: 20,
                                 }}
                             >
 
@@ -889,86 +950,9 @@ class ProblemCard extends React.Component {
                                 </Grid>
 
 
-                                <Grid item 
-                                    style={{
-                                        display: "flex",
-                                        gap: 20,
-                                        flexWrap: "wrap",
-                                    }}
-                                >
-                                
-                                    {/* <Button 
-                                        className={classes.button}
-                                        style={{ 
-                                            minWidth: "180px"
-                                        }}
-                                        variant="contained"
-                                        color="secondary"
-                                    >
-                                        <div 
-                                            style = {{
-                                                marginRight: 8,
-                                                width: "20px",
-                                                height: "20px"
-                                            }}
-                                        >
-                                            <img src={stars} alt="AI Hint" />
-                                        </div>
-
-                                        AI Hint
-                                    </Button>
-                                
-                                    <Button 
-                                        className={classes.button}
-                                        style={{ 
-                                            minWidth: "180px"
-                                        }}
-                                        variant="contained"
-                                        color="secondary"
-                                    >
-
-                                        <div 
-                                            style = {{
-                                                marginRight: 8,
-                                                width: "20px",
-                                                height: "20px"
-                                            }}
-                                        
-                                        >
-                                            <img src={fileCheck} alt="AI Solution" />
-                                        </div>
-
-                                        AI Solution
-                                    </Button> */}
-
-                                    <Button 
-                                        className={clsx(classes.button, {active: this.state.activeHintType==='normal',})}
-                                        style={{ 
-                                            minWidth: "190px",
-                                        }}
-                                        variant="contained"
-                                        color="secondary"
-                                        title="Teacher Guided Hints"
-                                        onClick={this.toggleHints}
-                                        {...stagingProp({
-                                                "data-selenium-target": `hint-button-${this.props.index}`,
-                                            })}
-                                        >
-
-                                        <div 
-                                            style = {{
-                                                marginRight: 8,
-                                                width: "20px",
-                                                height: "20px"
-                                            }}
-                                        >
-                                            <img src={teacherGuide} alt="Teacher Guidance" />
-                                        </div>
-                                        Teacher Guidance
-                                    </Button>
-                                </Grid>
                             </Grid>                     
                         </CardActions> 
+                        {portalHints}
                     </Card>
             // </div>
         );
