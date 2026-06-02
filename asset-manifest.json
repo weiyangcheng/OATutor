@@ -1,18 +1,18 @@
 {
   "files": {
-    "main.css": "/place-holder/static/css/main.220a0636.css",
-    "main.js": "/place-holder/static/js/main.d12d0eec.js",
-    "static/media/Symbola.svg": "/place-holder/static/media/Symbola.f647c9292a2da02d9ae8.svg",
-    "static/media/Symbola.eot": "/place-holder/static/media/Symbola.d25fbd520f6558203fb4.eot",
-    "static/media/Symbola.ttf": "/place-holder/static/media/Symbola.1ac5fa7f9b82ed4ce3f3.ttf",
-    "static/media/Symbola.woff": "/place-holder/static/media/Symbola.353fd9bde3c87711f5fc.woff",
-    "static/media/Symbola.woff2": "/place-holder/static/media/Symbola.080d8bb6a36e8bd8966b.woff2",
-    "index.html": "/place-holder/index.html",
-    "main.220a0636.css.map": "/place-holder/static/css/main.220a0636.css.map",
-    "main.d12d0eec.js.map": "/place-holder/static/js/main.d12d0eec.js.map"
+    "main.css": "/OATutor/static/css/main.e180885c.css",
+    "main.js": "/OATutor/static/js/main.5623e86f.js",
+    "static/media/Symbola.svg": "/OATutor/static/media/Symbola.f647c9292a2da02d9ae8.svg",
+    "static/media/Symbola.eot": "/OATutor/static/media/Symbola.d25fbd520f6558203fb4.eot",
+    "static/media/Symbola.ttf": "/OATutor/static/media/Symbola.1ac5fa7f9b82ed4ce3f3.ttf",
+    "static/media/Symbola.woff": "/OATutor/static/media/Symbola.353fd9bde3c87711f5fc.woff",
+    "static/media/Symbola.woff2": "/OATutor/static/media/Symbola.080d8bb6a36e8bd8966b.woff2",
+    "index.html": "/OATutor/index.html",
+    "main.e180885c.css.map": "/OATutor/static/css/main.e180885c.css.map",
+    "main.5623e86f.js.map": "/OATutor/static/js/main.5623e86f.js.map"
   },
   "entrypoints": [
-    "static/css/main.220a0636.css",
-    "static/js/main.d12d0eec.js"
+    "static/css/main.e180885c.css",
+    "static/js/main.5623e86f.js"
   ]
 }
